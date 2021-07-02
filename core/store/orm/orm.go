@@ -611,7 +611,7 @@ func (orm *ORM) Jobs(cb func(*models.JobSpec) bool, initrTypes ...string) error 
 	if err := orm.MustEnsureAdvisoryLock(); err != nil {
 		return err
 	}
-	return Batch(func(offset, limit uint) (uint, error) {
+	return postgres.Batch(func(offset, limit uint) (uint, error) {
 		scope := orm.DB.Order("job_specs.id asc").Limit(int(limit)).Offset(int(offset))
 		if len(initrTypes) > 0 {
 			scope = scope.Where("initiators.type IN (?)", initrTypes)
@@ -831,7 +831,7 @@ func (orm *ORM) UnscopedJobRunsWithStatus(cb func(*models.JobRun), statuses ...m
 		return errors.Wrap(err, "finding job ids")
 	}
 
-	return Batch(func(offset, limit uint) (uint, error) {
+	return postgres.Batch(func(offset, limit uint) (uint, error) {
 		batchIDs := runIDs[offset:utils.MinUint(limit, uint(len(runIDs)))]
 		var runs []models.JobRun
 		err := orm.Unscoped().
@@ -1355,7 +1355,7 @@ func (orm *ORM) DeleteStaleSessions(before time.Time) error {
 // TaskRuns are removed by ON DELETE CASCADE when the JobRuns and RunResults
 // are deleted.
 func BulkDeleteRuns(db *gorm.DB, bulkQuery *models.BulkDeleteRunRequest) error {
-	return Batch(func(_, limit uint) (count uint, err error) {
+	return postgres.Batch(func(_, limit uint) (count uint, err error) {
 		res := db.Exec(`
 WITH job_runs_to_delete AS (
 	SELECT id FROM job_runs jr
@@ -1645,31 +1645,6 @@ func (ct *Connection) initializeDatabase() (*gorm.DB, error) {
 	d.SetMaxIdleConns(ct.maxIdleConns)
 
 	return db, nil
-}
-
-// BatchSize is the default number of DB records to access in one batch
-const BatchSize uint = 1000
-
-// BatchFunc is the function to execute on each batch of records, should return the count of records affected
-type BatchFunc func(offset, limit uint) (count uint, err error)
-
-// Batch is an iterator for batches of records
-func Batch(cb BatchFunc) error {
-	offset := uint(0)
-	limit := BatchSize
-
-	for {
-		count, err := cb(offset, limit)
-		if err != nil {
-			return err
-		}
-
-		if count < limit {
-			return nil
-		}
-
-		offset += limit
-	}
 }
 
 // SortType defines the different sort orders available.

@@ -16,6 +16,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/internal/cltest/heavyweight"
 	"github.com/smartcontractkit/chainlink/core/internal/mocks"
 	"github.com/smartcontractkit/chainlink/core/services"
+	"github.com/smartcontractkit/chainlink/core/services/postgres"
 	"github.com/smartcontractkit/chainlink/core/services/synchronization"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/store/orm"
@@ -1393,7 +1394,7 @@ func TestJobs_SQLiteBatchSizeIntegrity(t *testing.T) {
 	require.NoError(t, store.CreateJob(&archivedJob))
 
 	jobs := []models.JobSpec{}
-	jobNumber := int(orm.BatchSize*2 + 1)
+	jobNumber := int(postgres.BatchSize*2 + 1)
 	for i := 0; i < jobNumber; i++ {
 		job := cltest.NewJobWithFluxMonitorInitiator()
 		require.NoError(t, store.CreateJob(&job))
